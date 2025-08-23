@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-feature android:glEsVersion="0x00030000" android:required="true" />
-    <uses-feature android:name="android.hardware.vulkan.level" android:required="true" />
-    <uses-feature android:name="android.hardware.vulkan.version" android:required="true" />
+<manifest xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-feature
+        android:name="android.hardware.vulkan.level"
+        android:required="true"
+        android:version="4202496"
+        tools:targetApi="24" />
+    <uses-feature android:name="android.hardware.vulkan.version"
+        android:required="true"
+        android:version="1"
+        tools:targetApi="24" />
     <application
         android:hasCode="false"
         android:allowBackup="true"
