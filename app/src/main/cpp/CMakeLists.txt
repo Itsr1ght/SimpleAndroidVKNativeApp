@@ -23,6 +23,16 @@ add_library(native_app SHARED
     ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c
 )
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(native_app PRIVATE DEBUG=1)
+    target_compile_definitions(native_app PRIVATE NDEBUG=1)
+    target_compile_definitions(native_app PRIVATE VK_DEBUG_BUILD=1)
+    message(STATUS "Configuring DEBUG build")
+else()
+    target_compile_definitions(native_app PRIVATE VK_RELEASE_BUILD=1)
+    message(STATUS "Configuring RELEASE build")
+endif()
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 target_include_directories(native_app PRIVATE
