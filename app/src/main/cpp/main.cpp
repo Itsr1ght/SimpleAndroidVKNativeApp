@@ -4,6 +4,8 @@
 #include "vulkan/vulkan.h"
 #include <android_native_app_glue.h>
 #include <android/log.h>
+
+#include <memory>
 #include <vector>
 #include <cstdlib>
 #include <string>
@@ -12,44 +14,108 @@
 #define LOG_ERROR(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOG_INFO(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 
-#ifdef NDEBUG
-constexpr bool enableValidationLayers = true;
-#else
-constexpr bool enableValidationLayers = false;
-#endif
 
-const char* validationLayers[] = {
-    "VK_LAYER_KHRONOS_validation"
+class VulkanApp {
+public:
+    VulkanApp(android_app* app);
+    void static handle_cmd(struct android_app* app, int32_t cmd);
+    static std::string vkResultToString(VkResult result);
+    void create_instance();
+    void update();
+
+private:
+    android_app* app;
+    VkInstance instance = VK_NULL_HANDLE;
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
 };
 
-struct VulkanData{
-    VkInstance instance;
-    VkSurfaceKHR surface;
-};
-
-VulkanData data;
-
-bool checkValidationLayerSupport(){
-    uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-    std::vector<VkLayerProperties> availableLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
-    for (const char* layerName : validationLayers) {
-        bool layerFound = false;
-        for (const auto& layerProperties : availableLayers) {
-            if (strcmp(layerName, layerProperties.layerName) == 0) {
-                layerFound = true;
-                break;
-            }
-        }
-        if (!layerFound) {
-            return false;
-        }
-    }
-    return true;
+VulkanApp::VulkanApp(android_app *app) {
+    auto result = volkInitialize();
+    LOG_INFO("{volkInitialize} result : %s", VulkanApp::vkResultToString(result).c_str());
+    this->app = app;
+    this->create_instance();
+    this->app->onAppCmd = VulkanApp::handle_cmd;
+    this->app->userData = (void*)this;
 }
 
-std::string vkResultToString(VkResult result){
+void VulkanApp::create_instance() {
+    const char* extensions[] = {
+            "VK_KHR_surface",
+            "VK_KHR_android_surface"
+    };
+
+    auto application_info = VkApplicationInfo{
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pApplicationName = "Hello Android",
+            .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+            .pEngineName = "Hello Engine",
+            .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+            .apiVersion = VK_API_VERSION_1_2,
+    };
+
+    auto instance_create_info = VkInstanceCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &application_info,
+            .enabledLayerCount = 0,
+            .ppEnabledLayerNames = nullptr,
+            .enabledExtensionCount = 2,
+            .ppEnabledExtensionNames = extensions,
+    };
+
+    auto result = vkCreateInstance(&instance_create_info, nullptr, &this->instance);
+    LOG_INFO("{vkCreateInstance} result : %s", VulkanApp::vkResultToString(result).c_str());
+    volkLoadInstance(this->instance);
+}
+
+void VulkanApp::handle_cmd(struct android_app* app, int32_t cmd) {
+
+    auto vulkan_app = static_cast<VulkanApp*>(app->userData);
+    switch (cmd) {
+        case APP_CMD_INIT_WINDOW: {
+            if (app->window != nullptr) {
+                auto surface_create_info = VkAndroidSurfaceCreateInfoKHR{
+                        .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
+                        .pNext = NULL,
+                        .flags = 0,
+                        .window = app->window,
+                };
+                auto result = vkCreateAndroidSurfaceKHR(
+                        vulkan_app->instance,
+                        &surface_create_info,
+                        nullptr,
+                        &vulkan_app->surface
+                );
+                LOG_INFO("{vkCreateAndroidSurfaceKHR} result : %s", VulkanApp::vkResultToString(result).c_str());
+            }
+            break;
+        }
+        case APP_CMD_DESTROY: {
+            if(vulkan_app->instance && vulkan_app->surface)
+                vkDestroySurfaceKHR(vulkan_app->instance, vulkan_app->surface, nullptr);
+            if(vulkan_app->instance)
+                vkDestroyInstance(vulkan_app->instance, nullptr);
+            break;
+        }
+        default:{
+            break;
+        }
+    }
+}
+
+void VulkanApp::update() {
+    LOG_INFO("starting loop event");
+    int events;
+    android_poll_source* source;
+    while (this->app->destroyRequested == 0){
+        if (ALooper_pollOnce(0, nullptr, &events, (void**)&source) >= 0 && source != nullptr){
+            if(source != nullptr) {
+                source->process(this->app, source);
+            }
+        }
+    }
+}
+
+std::string VulkanApp::vkResultToString(VkResult result){
     switch(result){
         case VK_SUCCESS: return {"VK_SUCCESS"};
         case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR: return {"VK_ERROR_NATIVE_WINDOW_IN_USE_KHR"};
@@ -61,112 +127,8 @@ std::string vkResultToString(VkResult result){
     }
 }
 
-void handle_cmd(struct android_app* app, int32_t cmd) {
-    switch (cmd) {
-        case APP_CMD_INIT_WINDOW:{
-            if (app->window != nullptr){
-                auto surface_create_info = VkAndroidSurfaceCreateInfoKHR{
-                        .sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR,
-                        .pNext = NULL,
-                        .flags = 0,
-                        .window = app->window,
-                };
-                auto result = vkCreateAndroidSurfaceKHR(
-                        data.instance,
-                        &surface_create_info,
-                        nullptr,
-                        &data.surface
-                );
-
-                LOG_INFO("{vkCreateAndroidSurfaceKHR} result : %s", vkResultToString(result).c_str());
-                break;
-            }
-        }
-        case APP_CMD_TERM_WINDOW:{
-            vkDestroySurfaceKHR(data.instance, data.surface, nullptr);
-            break;
-        }
-        case APP_CMD_DESTROY:{
-            vkDestroySurfaceKHR(data.instance, data.surface, nullptr);
-            vkDestroyInstance(data.instance, nullptr);
-            break;
-        }
-        default:{
-            break;
-        }
-    }
-}
-
 [[maybe_unused]]
 void android_main(android_app* app) {
-    app->onAppCmd = handle_cmd;
-
-    if (volkInitialize() != VK_SUCCESS) {
-        LOG_ERROR("Cannot initialize VOLK");
-    }
-    LOG_INFO("initialize VOLK Successfully");
-
-    uint32_t version = 0;
-    vkEnumerateInstanceVersion(&version);
-    LOG_INFO("Vulkan version supported: %u.%u.%u",
-         VK_VERSION_MAJOR(version),
-         VK_VERSION_MINOR(version),
-         VK_VERSION_PATCH(version)
-    );
-    bool validationLayersAvailable = checkValidationLayerSupport();
-    if (enableValidationLayers) {
-        if (!validationLayersAvailable) {
-            LOG_ERROR("Validation layers requested, but not available!");
-            LOG_INFO("Continuing without validation layers...");
-        } else {
-            LOG_INFO("Validation layers are available and will be enabled");
-        }
-    }
-
-    const char* extensions[] = {
-        "VK_KHR_surface",
-        "VK_KHR_android_surface"
-    };
-
-    auto application_info = VkApplicationInfo{
-        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pApplicationName = "Hello Android",
-        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-        .pEngineName = "Hello Engine",
-        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-        .apiVersion = VK_API_VERSION_1_2,
-    };
-
-    auto instance_create_info = VkInstanceCreateInfo{
-        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pApplicationInfo = &application_info,
-        .enabledLayerCount = 0,
-        .ppEnabledLayerNames = nullptr,
-        .enabledExtensionCount = 2,
-        .ppEnabledExtensionNames = extensions,
-    };
-
-    if (validationLayersAvailable) {
-        instance_create_info.enabledLayerCount = 1;
-        instance_create_info.ppEnabledLayerNames = validationLayers;
-    }
-
-    vkCreateInstance(&instance_create_info, nullptr, &data.instance);
-
-    if(data.instance == nullptr) {
-        LOG_ERROR("Cannot create instance");
-    }
-
-    volkLoadInstance(data.instance);
-
-    LOG_INFO("starting loop event");
-    int events;
-    android_poll_source* source;
-    while (app->destroyRequested == 0){
-        if (ALooper_pollOnce(0, nullptr, &events, (void**)&source) >= 0 && source != nullptr){
-            if(source != nullptr) {
-                source->process(app, source);
-            }
-        }
-    }
+    auto vulkan_app = std::make_unique<VulkanApp>(app);
+    vulkan_app->update();
 }
