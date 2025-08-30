@@ -20,6 +20,7 @@ CPMAddPackage(
 
 add_library(native_app SHARED
     main.cpp
+    VulkanApp.cpp
     ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c
 )
 
@@ -36,8 +37,8 @@ endif()
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 target_include_directories(native_app PRIVATE
-    ${ANDROID_NDK}/sources/android/native_app_glue
-    Vulkan-Headers 
+        ${ANDROID_NDK}/sources/android/native_app_glue
+        Vulkan-Headers
 )
 
 target_link_libraries(native_app
