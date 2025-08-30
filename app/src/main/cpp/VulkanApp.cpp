@@ -21,21 +21,21 @@ void VulkanApp::create_instance() {
     };
 
     auto application_info = VkApplicationInfo{
-            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-            .pApplicationName = "Hello Android",
-            .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-            .pEngineName = "Hello Engine",
-            .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-            .apiVersion = VK_API_VERSION_1_2,
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pApplicationName = "Hello Android",
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = "Hello Engine",
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion = VK_API_VERSION_1_2,
     };
 
     auto instance_create_info = VkInstanceCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-            .pApplicationInfo = &application_info,
-            .enabledLayerCount = 0,
-            .ppEnabledLayerNames = nullptr,
-            .enabledExtensionCount = 2,
-            .ppEnabledExtensionNames = extensions,
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pApplicationInfo = &application_info,
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = nullptr,
+        .enabledExtensionCount = 2,
+        .ppEnabledExtensionNames = extensions,
     };
 
     auto result = vkCreateInstance(&instance_create_info, nullptr, &this->instance);
@@ -62,6 +62,7 @@ void VulkanApp::handle_cmd(struct android_app* app, int32_t cmd) {
                         &vulkan_app->surface
                 );
                 LOG_INFO("{vkCreateAndroidSurfaceKHR} result : %s", VulkanApp::vkResultToString(result).c_str());
+                vulkan_app->update();
             }
             break;
         }
@@ -118,4 +119,8 @@ const char* VulkanApp::get_asset_data(const char* asset_name){
         AAsset_close(asset);
         return static_cast<const char*>(buffer);
     }
+}
+
+void VulkanApp::_update() {
+
 }

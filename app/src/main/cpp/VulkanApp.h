@@ -6,7 +6,6 @@
 #include "volk.h"
 
 // ANDROID AND VULKAN HEADERS
-#include "vulkan/vulkan.h"
 #include <android_native_app_glue.h>
 #include <android/asset_manager.h>
 #include <android/log.h>
@@ -25,13 +24,14 @@
 class VulkanApp {
 public:
     explicit VulkanApp(android_app* app);
-    void static handle_cmd(struct android_app* app, int32_t cmd);
-    static std::string vkResultToString(VkResult result);
-    void create_instance();
     void update();
 
 private:
+    void _update();
+    void static handle_cmd(struct android_app* app, int32_t cmd);
+    static std::string vkResultToString(VkResult result);
     const char* get_asset_data(const char* asset_name);
+    void create_instance();
 
     android_app* app;
     VkInstance instance = VK_NULL_HANDLE;
