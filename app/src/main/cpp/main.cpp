@@ -3,6 +3,7 @@
 
 #include "vulkan/vulkan.h"
 #include <android_native_app_glue.h>
+#include <android/asset_manager.h>
 #include <android/log.h>
 
 #include <memory>
@@ -17,13 +18,15 @@
 
 class VulkanApp {
 public:
-    VulkanApp(android_app* app);
+    explicit VulkanApp(android_app* app);
     void static handle_cmd(struct android_app* app, int32_t cmd);
     static std::string vkResultToString(VkResult result);
     void create_instance();
     void update();
 
 private:
+    const char* get_asset_data(const char* asset_name);
+
     android_app* app;
     VkInstance instance = VK_NULL_HANDLE;
     VkSurfaceKHR surface = VK_NULL_HANDLE;
@@ -45,12 +48,12 @@ void VulkanApp::create_instance() {
     };
 
     auto application_info = VkApplicationInfo{
-            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-            .pApplicationName = "Hello Android",
-            .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-            .pEngineName = "Hello Engine",
-            .engineVersion = VK_MAKE_VERSION(1, 0, 0),
-            .apiVersion = VK_API_VERSION_1_2,
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pApplicationName = "Hello Android",
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = "Hello Engine",
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .apiVersion = VK_API_VERSION_1_2,
     };
 
     auto instance_create_info = VkInstanceCreateInfo{
@@ -107,8 +110,12 @@ void VulkanApp::update() {
     int events;
     android_poll_source* source;
     while (this->app->destroyRequested == 0){
-        if (ALooper_pollOnce(0, nullptr, &events, (void**)&source) >= 0 && source != nullptr){
-            if(source != nullptr) {
+        if (ALooper_pollOnce(
+                0, nullptr,
+                &events,
+                (void**)&source) >= 0 && source != nullptr
+         ){
+        if(source != nullptr) {
                 source->process(this->app, source);
             }
         }
@@ -127,8 +134,21 @@ std::string VulkanApp::vkResultToString(VkResult result){
     }
 }
 
+const char* VulkanApp::get_asset_data(const char* asset_name){
+    AAssetManager* assetManager = this->app->activity->assetManager;
+    AAsset* asset = AAssetManager_open(assetManager, asset_name, AASSET_MODE_BUFFER);
+    if (!asset) {
+        LOG_ERROR("Failed to open asset");
+        return nullptr;
+    } else {
+        const void* buffer = AAsset_getBuffer(asset);
+        AAsset_close(asset);
+        return static_cast<const char*>(buffer);
+    }
+}
+
 [[maybe_unused]]
 void android_main(android_app* app) {
-    auto vulkan_app = std::make_unique<VulkanApp>(app);
+    auto vulkan_app= std::make_unique<VulkanApp>(app);
     vulkan_app->update();
 }
