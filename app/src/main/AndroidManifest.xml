@@ -10,6 +10,8 @@
         android:required="true"
         android:version="1"
         tools:targetApi="24" />
+    <meta-data android:name="com.android.graphics.injectLayers.enable"
+        android:value="true"/>
     <application
         android:hasCode="false"
         android:allowBackup="true"
